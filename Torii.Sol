@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.7;
+
+
+contract SimpleBridge {
+    address public immutable owner;
+
+    mapping (address => uint256) public mapUserBalance;
+
+    event Bridge(address indexed user, address indexed to,uint256 amount);
+    event BridgeFrom(address indexed to, uint256 amount);
+    event AddBalance(address indexed user, uint256 amount);
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    // Модификатор для проверки, что функцию вызывает владелец контракта
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner can call this function");
+        _;
+    }
+
+    // Функция для отправки средств на указанный адрес
+    function bridge(address to, uint256 amount) external {
+
+        uint256 balance = mapUserBalance[msg.sender];
+        require(balance >= amount, "Insufficient funds");
+
+        balance -= amount;
+        mapUserBalance[msg.sender] = balance;
+
+        emit Bridge(msg.sender, to, amount);
+    }
+
+    // Функция для отправки средств на Ethereum адрес, доступная только владельцу контракта
+    function bridgeFrom(address to, uint256 amount) external onlyOwner {
+
+        payable(to).transfer(amount);
+
+        emit BridgeFrom(to, amount);
+    }
+
+    // Функция для пополнения баланса контракта
+    function addBalance(uint256 amount) external payable {
+
+        require(msg.value == amount, "Incorrect amount of funds");
+
+        mapUserBalance[msg.sender] += amount;
+
+        emit AddBalance(msg.sender,amount);
+    }
+}
